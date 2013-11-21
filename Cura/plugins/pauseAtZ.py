@@ -32,6 +32,7 @@ pauseState = 0
 currentSectionType = 'STARTOFFILE'
 with open(filename, "w") as f:
 	for line in lines:
+		print line
 		if line.startswith(';'):
 			if line.startswith(';TYPE:'):
 				currentSectionType = line[6:].strip()
@@ -57,6 +58,7 @@ with open(filename, "w") as f:
 						f.write("G1 Z15 F300\n")
 					#Wait till the user continues printing
 					f.write("M0\n")
+					print "Resumed"
 					#Push the filament back, and retract again, the properly primes the nozzle when changing filament.
 					f.write("G1 E%f F6000\n" % (retractAmount))
 					f.write("G1 E-%f F6000\n" % (retractAmount))
