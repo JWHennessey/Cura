@@ -32,7 +32,6 @@ pauseState = 0
 currentSectionType = 'STARTOFFILE'
 with open(filename, "w") as f:
 	for line in lines:
-		print line
 		if line.startswith(';'):
 			if line.startswith(';TYPE:'):
 				currentSectionType = line[6:].strip()
@@ -69,4 +68,5 @@ with open(filename, "w") as f:
 					f.write("G1 E%f F6000\n" % (retractAmount))
 					f.write("G1 F9000\n")
 					f.write("M82\n")
+		print "FILENAME: " + filename
 		f.write(line)
