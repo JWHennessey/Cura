@@ -307,8 +307,14 @@ class printWindow(wx.Frame):
 
 		nb.AddPage(self.termPanel, _("Term"))
 
-		self.sizer.AddGrowableRow(6)
-		self.sizer.AddGrowableCol(3)
+
+		self.diameterPanel = wx.Panel(nb)
+		sizer = wx.GridBagSizer(2, 2)
+		self.diameterPanel.SetSizer(sizer)
+		sizer.Add(PrintCommandButton(self, ['G91', 'G1 Y100 F6000', 'G90'], 'print-move-y100.png'), pos=(0, 3))
+		sizer.Add(PrintCommandButton(self, ['G91', 'G1 Y10 F6000', 'G90'], 'print-move-y10.png'), pos=(1, 3))
+
+		nb.AddPage(self.diameterPanel, _("Diameter Plugin"))
 
 		self.Bind(wx.EVT_CLOSE, self.OnClose)
 		self.connectButton.Bind(wx.EVT_BUTTON, self.OnConnect)
