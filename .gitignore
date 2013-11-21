@@ -30,3 +30,4 @@ scripts/win32/dist/*
 log.txt
 output.txt
 *.bak
+CuraEngine/*
