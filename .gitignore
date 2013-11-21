@@ -31,3 +31,5 @@ log.txt
 output.txt
 *.bak
 CuraEngine/*
+test_files/
+CuraEngine
