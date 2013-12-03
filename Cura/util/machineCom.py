@@ -125,7 +125,7 @@ class VirtualPrinter():
 
 class MachineComPrintCallback(object):
 	def mcLog(self, message):
-		pass
+		print message
 	
 	def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
 		pass
@@ -331,8 +331,10 @@ class MachineCom(object):
 		tempRequestTimeout = timeout
 		while True:
 			line = self._readline()
+			self._log(line)
 			if line is None:
 				break
+			
 			
 			#No matter the state, if we see an error, goto the error state and store the error for reference.
 			if line.startswith('Error:'):

@@ -634,7 +634,7 @@ class printWindow(wx.Frame):
 		return True
 
 	def mcLog(self, message):
-		#print message
+		print message
 		pass
 
 	def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
