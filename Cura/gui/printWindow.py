@@ -147,6 +147,8 @@ class printWindow(wx.Frame):
 		self.termHistory = []
 		self.termHistoryIdx = 0
 
+		self.jlt_layerCountDict = {}
+
 		self.cam = None
 
 		self.SetSizer(wx.BoxSizer())
@@ -503,7 +505,7 @@ class printWindow(wx.Frame):
 		self.currentZ = -1
 		if self.cam is not None and self.timelapsEnable.GetValue():
 			self.cam.startTimelapse(self.timelapsSavePath.GetValue())
-		self.machineCom.printGCode(self.gcodeList)
+		self.machineCom.printGCode(self.gcodeList, self.jlt_layerCountDict)
 		self.UpdateButtonStates()
 
 	def OnCancel(self, e):
@@ -592,13 +594,28 @@ class printWindow(wx.Frame):
 		#Send an initial M110 to reset the line counter to zero.
 		prevLineType = lineType = 'CUSTOM'
 		gcodeList = ["M110"]
+		jlt_currentLayerId = 0
+		self.jlt_layerCountDict[jlt_currentLayerId] = 0
+		self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = 0
 		for line in open(filename, 'r'):
+			#jlt increment later id when new ;LAYER: seen
+			if line.startswith(';LAYER:'):
+
+				jlt_currentLayerId+=1
+				self.jlt_layerCountDict[jlt_currentLayerId] = 0
+				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[jlt_currentLayerId - 1]
+
+				print jlt_currentLayerId
+				
 			if line.startswith(';TYPE:'):
 				lineType = line[6:].strip()
 			if ';' in line:
 				line = line[0:line.find(';')]
+
 			line = line.strip()
 			if len(line) > 0:
+				self.jlt_layerCountDict[jlt_currentLayerId] += 1
+				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] += 1
 				if prevLineType != lineType:
 					gcodeList.append((line, lineType, ))
 				else:
@@ -606,7 +623,7 @@ class printWindow(wx.Frame):
 				prevLineType = lineType
 		gcode = gcodeInterpreter.gcode()
 		gcode.loadList(gcodeList)
-		#print "Loaded: %s (%d)" % (filename, len(gcodeList))
+		print "Loaded: %s (%d)" % (filename, len(gcodeList))
 		self.filename = filename
 		self.gcode = gcode
 		self.gcodeList = gcodeList
@@ -634,8 +651,8 @@ class printWindow(wx.Frame):
 		return True
 
 	def mcLog(self, message):
-		#print message
-		pass
+		print "PrintWindo:  " + message
+		#pass
 
 	def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
 		self.temperatureGraph.addPoint(temp, targetTemp, bedTemp, bedTargetTemp)

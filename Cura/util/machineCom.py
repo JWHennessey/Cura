@@ -125,7 +125,7 @@ class VirtualPrinter():
 
 class MachineComPrintCallback(object):
 	def mcLog(self, message):
-		pass
+		print "MachineCom:  " + message
 	
 	def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
 		pass
@@ -188,6 +188,11 @@ class MachineCom(object):
 		self._heatupWaitStartTime = 0
 		self._heatupWaitTimeLost = 0.0
 		self._printStartTime100 = None
+
+		self._jlt_layerCountDict = None
+		self._jlt_layerBuffer = queue.Queue()
+
+		self._jlt_currentLayerId = 0
 		
 		self.thread = threading.Thread(target=self._monitor)
 		self.thread.daemon = True
@@ -429,9 +434,19 @@ class MachineCom(object):
 					tempRequestTimeout = time.time() + 5
 				if 'ok' in line:
 					timeout = time.time() + 5
+					self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
 					if not self._commandQueue.empty():
-						self._sendCommand(self._commandQueue.get())
+						remainingCommands = self._jlt_layerCountDict[str(self._jlt_currentLayerId) + "cumul"] - self._gcodePos
+						if remainingCommands < 0:
+							raise Exception("remainingCommands less than zero")
+						elif (remainingCommands < 30) and (len(self._jlt_layerCountDict) > self._jlt_currentLayerId-1):
+							self._jlt_currentLayerId += 1
+							self._log("Sending Layer " + str(self._jlt_currentLayerId))
+							for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
+								self._sendCommand(self._commandQueue.get())
+								self._gcodePos += 1
 					else:
+						self._log("MachineCom: Sending Next")
 						self._sendNext()
 				elif "resend" in line.lower() or "rs" in line:
 					try:
@@ -525,11 +540,13 @@ class MachineCom(object):
 		self._log('Send: %s' % (cmd))
 		try:
 			self._serial.write(cmd + '\n')
+			self._log("MachineCom: Queue Size afer serial write " + str(self._commandQueue.qsize()))
 		except serial.SerialTimeoutException:
 			self._log("Serial timeout while writing to serial port, trying again.")
 			try:
 				time.sleep(0.5)
 				self._serial.write(cmd + '\n')
+				self._log("MachineCom: Queue Size afer serial write attempt 2" + str(self._commandQueue.qsize()))
 			except:
 				self._log("Unexpected error while writing serial port: %s" % (getExceptionString()))
 				self._errorValue = getExceptionString()
@@ -563,18 +580,23 @@ class MachineCom(object):
 		except:
 			self._log("Unexpected error: %s" % (getExceptionString()))
 		checksum = reduce(lambda x,y:x^y, map(ord, "N%d%s" % (self._gcodePos, line)))
-		self._sendCommand("N%d%s*%d" % (self._gcodePos, line, checksum))
-		self._gcodePos += 1
+
+		self.sendCommand("N%d%s*%d" % (self._gcodePos, line, checksum))
+		
 		self._callback.mcProgress(self._gcodePos)
 	
 	def sendCommand(self, cmd):
 		cmd = cmd.encode('ascii', 'replace')
 		if self.isPrinting():
+			self._log("MachineCom: Is Printing")
+			self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
 			self._commandQueue.put(cmd)
 		elif self.isOperational():
+			self._log("MachineCom: Is Operational")
 			self._sendCommand(cmd)
+
 	
-	def printGCode(self, gcodeList):
+	def printGCode(self, gcodeList, layerDict):
 		if not self.isOperational() or self.isPrinting():
 			return
 		self._gcodeList = gcodeList
@@ -583,6 +605,9 @@ class MachineCom(object):
 		self._printSection = 'CUSTOM'
 		self._changeState(self.STATE_PRINTING)
 		self._printStartTime = time.time()
+
+		self._jlt_layerCountDict = layerDict
+
 		for i in xrange(0, 4):
 			self._sendNext()
 	
