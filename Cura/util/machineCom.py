@@ -191,6 +191,7 @@ class MachineCom(object):
 
 		self._jlt_layerCountDict = None
 		self._jlt_layerBuffer = queue.Queue()
+		self._jlt_gcodePos = 0;
 
 		self._jlt_currentLayerId = 0
 		
@@ -435,19 +436,42 @@ class MachineCom(object):
 				if 'ok' in line:
 					timeout = time.time() + 5
 					self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
+					self._log("MachineCom: Layer Size" + str(self._jlt_layerCountDict)  )
 					if not self._commandQueue.empty():
-						remainingCommands = self._jlt_layerCountDict[str(self._jlt_currentLayerId) + "cumul"] - self._gcodePos
-						if remainingCommands < 0:
-							raise Exception("remainingCommands less than zero")
-						elif (remainingCommands < 30) and (len(self._jlt_layerCountDict) > self._jlt_currentLayerId-1):
-							self._jlt_currentLayerId += 1
-							self._log("Sending Layer " + str(self._jlt_currentLayerId))
+						if self._jlt_currentLayerId+1 >= (len(self._jlt_layerCountDict)/2):
+							remainingCommands = 0
+							self._log("MachineCom: Last Layer Sent")
+							#self._log("MachineCom: Command Queue Contents " + str([x for x in self._commandQueue.queue]))
+							self._changeState(self.STATE_OPERATIONAL)
+						else:
+							remainingCommands = self._jlt_layerCountDict[str(self._jlt_currentLayerId) + "cumul"] - self._jlt_gcodePos
+						
+						#if remainingCommands < 1:
+							
+
+						if (remainingCommands < 5) and (len(self._jlt_layerCountDict) > self._jlt_currentLayerId-1):
+							
+							self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
+							self._log("MachineCom: Before loop layer size  "+ str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
 							for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
-								self._sendCommand(self._commandQueue.get())
-								self._gcodePos += 1
+								if(self._jlt_gcodePos == 0):
+									jlt_cmd = self._commandQueue.get()
+									self._log("MachineCom: First Command Popping " + jlt_cmd)
+									self._sendCommand(jlt_cmd)
+								jlt_cmd = self._commandQueue.get()
+								self._log("MachineCom: Popping " + jlt_cmd)
+								self._sendCommand(jlt_cmd)
+								self._jlt_gcodePos += 1
+							self._jlt_currentLayerId += 1
+						else:
+							self._log("MachineCom: No layer sent")
 					else:
-						self._log("MachineCom: Sending Next")
-						self._sendNext()
+						self._log("MachineCom:  Queue is empty")
+						if self._jlt_gcodePos >= len(self._gcodeList)-1:
+							self._log("MachineCom:  Maybe set to operationalal?")
+							#self._changeState(self.STATE_OPERATIONAL)
+						# self._log("MachineCom: Sending Next")
+						# self._sendNext()
 				elif "resend" in line.lower() or "rs" in line:
 					try:
 						self._gcodePos = int(line.replace("N:"," ").replace("N"," ").replace(":"," ").split()[-1])
@@ -557,9 +581,9 @@ class MachineCom(object):
 			self.close(True)
 	
 	def _sendNext(self):
-		if self._gcodePos >= len(self._gcodeList):
-			self._changeState(self.STATE_OPERATIONAL)
-			return
+		# if self._gcodePos >= len(self._gcodeList):
+		# 	self._changeState(self.STATE_OPERATIONAL)
+		# 	return
 		if self._gcodePos == 100:
 			self._printStartTime100 = time.time()
 		line = self._gcodeList[self._gcodePos]
@@ -582,7 +606,7 @@ class MachineCom(object):
 		checksum = reduce(lambda x,y:x^y, map(ord, "N%d%s" % (self._gcodePos, line)))
 
 		self.sendCommand("N%d%s*%d" % (self._gcodePos, line, checksum))
-		
+		self._gcodePos += 1
 		self._callback.mcProgress(self._gcodePos)
 	
 	def sendCommand(self, cmd):
@@ -591,9 +615,13 @@ class MachineCom(object):
 			self._log("MachineCom: Is Printing")
 			self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
 			self._commandQueue.put(cmd)
+			#print [x for x in self._commandQueue.queue]
+
 		elif self.isOperational():
 			self._log("MachineCom: Is Operational")
 			self._sendCommand(cmd)
+			#self._gcodePos += 1
+
 
 	
 	def printGCode(self, gcodeList, layerDict):
@@ -608,7 +636,7 @@ class MachineCom(object):
 
 		self._jlt_layerCountDict = layerDict
 
-		for i in xrange(0, 4):
+		for i in range(len(gcodeList)):
 			self._sendNext()
 	
 	def cancelPrint(self):

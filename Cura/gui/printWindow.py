@@ -10,6 +10,7 @@ import platform
 import os
 import power
 import datetime
+import shutil
 
 import wx
 from wx.lib import buttons
@@ -509,6 +510,7 @@ class printWindow(wx.Frame):
 		self.UpdateButtonStates()
 
 	def OnCancel(self, e):
+		print "PrintWindo: Cancel Pressed"
 		self.pauseButton.SetLabel('Pause')
 		self.machineCom.cancelPrint()
 		self.machineCom.sendCommand("M84")
@@ -589,6 +591,8 @@ class printWindow(wx.Frame):
 			self.Layout()
 
 	def LoadGCodeFile(self, filename):
+		shutil.copyfile(filename, "/Users/JamesHennessey/Sites/Cura/test_files/currentGcode.txt")
+
 		if self.machineCom is not None and self.machineCom.isPrinting():
 			return False
 		#Send an initial M110 to reset the line counter to zero.
@@ -598,12 +602,13 @@ class printWindow(wx.Frame):
 		self.jlt_layerCountDict[jlt_currentLayerId] = 0
 		self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = 0
 		for line in open(filename, 'r'):
+
 			#jlt increment later id when new ;LAYER: seen
 			if line.startswith(';LAYER:'):
 
 				jlt_currentLayerId+=1
 				self.jlt_layerCountDict[jlt_currentLayerId] = 0
-				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[jlt_currentLayerId - 1]
+				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[str(jlt_currentLayerId - 1) + 'cumul']
 
 				print jlt_currentLayerId
 				
@@ -627,7 +632,7 @@ class printWindow(wx.Frame):
 		self.filename = filename
 		self.gcode = gcode
 		self.gcodeList = gcodeList
-
+		#print "PrintWindo: " + str(gcodeList)
 		wx.CallAfter(self.progress.SetRange, len(gcodeList))
 		wx.CallAfter(self.UpdateButtonStates)
 		wx.CallAfter(self.UpdateProgress)
