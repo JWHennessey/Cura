@@ -446,31 +446,42 @@ class MachineCom(object):
 							#self._changeState(self.STATE_OPERATIONAL)
 
 						#else:
-							
-						remainingCommands = self._jlt_layerCountDict[str(self._jlt_currentLayerId) + "cumul"] - self._jlt_gcodePos
-						self._log("MachineCom: remainingCommands " + str(remainingCommands))
+						# cumulKey = str(self._jlt_currentLayerId) + "cumul"
+						# if cumulKey in self._jlt_layerCountDict:		
+						# 	remainingCommands = (self._jlt_layerCountDict[cumulKey] - self._jlt_gcodePos) + 1
+						# else:
+						# 	remainingCommands = remainingCommands - 1
+						# 	self._jlt_lastLayerSent = True 
+						# self._log("MachineCom: remainingCommands " + str(remainingCommands))
 						#if remainingCommands < 1							
 
-						if (remainingCommands < 5) and (not self._jlt_lastLayerSent):
-							
-							self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
-							self._log("MachineCom: Before loop layer size  "+ str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
+						self._log("MachineCom: Time " + str(time.time()))
+
+
+						if (self._commandQueue.qsize() < 5) and  (self._jlt_currentLayerId in self._jlt_layerCountDict): #(not self._jlt_lastLayerSent):
+
 							#for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
 							if(self._jlt_gcodePos == 0):
 								jlt_cmd = self._commandQueue.get()
 								self._log("MachineCom: First Command Popping " + jlt_cmd)
 								self._sendCommand(jlt_cmd)
-
+	
+							self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
+							self._log("MachineCom: Layer Size " + str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
+							for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
+								self._log(str(i))
+								self._sendNext()
 							self._jlt_currentLayerId += 1
-							if (self._jlt_currentLayerId >=  (len(self._jlt_layerCountDict)/2)):
-								self._jlt_lastLayerSent = True
-
+							self._log("MachineCom: Updated Queue Size " + str(self._commandQueue.qsize()))
 						
 						self._log("MachineCom: Not in last section (normal)")
 						jlt_cmd = self._commandQueue.get()
 						self._log("MachineCom: Popping " + jlt_cmd)
 						self._sendCommand(jlt_cmd)
 						self._jlt_gcodePos += 1
+
+						#self._log("MachineCom: Command Queue Contents " + str([x for x in self._commandQueue.queue]))
+
 					else:
 						self._log("MachineCom:  Queue is empty so set to operational")
 						self._changeState(self.STATE_OPERATIONAL)
@@ -644,9 +655,10 @@ class MachineCom(object):
 		self._jlt_lastLayerSent = False
 
 		self._jlt_layerCountDict = layerDict
-
-		for i in range(len(gcodeList)):
+		for i in range(layerDict[self._jlt_currentLayerId]):
 			self._sendNext()
+		self._log("MachineCom: Layers 0 queue")
+		self._jlt_currentLayerId += 1
 	
 	def cancelPrint(self):
 		if self.isOperational():

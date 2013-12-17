@@ -599,7 +599,7 @@ class printWindow(wx.Frame):
 		prevLineType = lineType = 'CUSTOM'
 		gcodeList = ["M110"]
 		jlt_currentLayerId = 0
-		self.jlt_layerCountDict[jlt_currentLayerId] = 0
+		self.jlt_layerCountDict[jlt_currentLayerId] = 1
 		self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = 0
 		for line in open(filename, 'r'):
 
