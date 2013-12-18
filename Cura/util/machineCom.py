@@ -46,7 +46,8 @@ def serialList(forAutoDetect=False):
 			baselist.remove(prev)
 			baselist.insert(0, prev)
 	else:
-		baselist = baselist + glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob("/dev/cu.*") + glob.glob("/dev/tty.usb*") + glob.glob("/dev/rfcomm*")
+		baselist = baselist + glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob("/dev/cu.*") + \
+		    glob.glob("/dev/tty.usb*") + glob.glob("/dev/rfcomm*")
 	if version.isDevVersion() and not forAutoDetect:
 		baselist.append('VIRTUAL')
 	return baselist
@@ -95,7 +96,8 @@ class VirtualPrinter():
 			except:
 				pass
 		if 'M105' in data:
-			self.readList.append("ok T:%.2f /%.2f B:%.2f /%.2f @:64\n" % (self.temp, self.targetTemp, self.bedTemp, self.bedTargetTemp))
+			self.readList.append("ok T:%.2f /%.2f B:%.2f /%.2f @:64\n" % \
+				(self.temp, self.targetTemp, self.bedTemp, self.bedTargetTemp))
 		elif len(data.strip()) > 0:
 			self.readList.append("ok\n")
 
@@ -181,7 +183,6 @@ class MachineCom(object):
 		self._bedTargetTemp = 0
 		self._gcodeList = None
 		self._gcodePos = 0
-		self._commandQueue = queue.Queue()
 		self._logQueue = queue.Queue(256)
 		self._feedRateModifier = {}
 		self._currentZ = -1
@@ -193,12 +194,10 @@ class MachineCom(object):
 		self._jlt_layerCountDict = None
 		self._jlt_layerBuffer = queue.Queue()
 		self._jlt_gcodePos = 0;
-
 		self._jlt_currentLayerId = 0
 		self._jlt_lastLayerSent = False
-
-		self._jlt_sentCommands = []
 		self._jlt_commandList = []
+		self._jlt_offset = 0
 		
 		self.thread = threading.Thread(target=self._monitor)
 		self.thread.daemon = True
@@ -341,7 +340,6 @@ class MachineCom(object):
 			timeout = time.time() + 5
 		tempRequestTimeout = timeout
 		while True:
-			#	time.sleep(0.1)
 			line = self._readline()
 			if line is None:
 				break
@@ -355,7 +353,8 @@ class MachineCom(object):
 				if re.match('Error:[0-9]\n', line):
 					line = line.rstrip() + self._readline()
 				#Skip the communication errors, as those get corrected.
-				if 'checksum mismatch' in line or 'Line Number is not Last Line Number' in line or 'No Line Number with checksum' in line or 'No Checksum with line number' in line:
+				if 'checksum mismatch' in line or 'Line Number is not Last Line Number' in line or \
+				   'No Line Number with checksum' in line or 'No Checksum with line number' in line:
 					pass
 				elif not self.isError():
 					self._errorValue = line[6:]
@@ -371,7 +370,10 @@ class MachineCom(object):
 					t = time.time()
 					self._heatupWaitTimeLost = t - self._heatupWaitStartTime
 					self._heatupWaitStartTime = t
-			elif line.strip() != '' and line.strip() != 'ok' and not line.startswith('Resend:') and not line.startswith('Error:checksum mismatch') and not line.startswith('Error:Line Number is not Last Line Number+1') and line != 'echo:Unknown command:""\n' and self.isOperational():
+			elif line.strip() != '' and line.strip() != 'ok' and not line.startswith('Resend:') and \
+				    not line.startswith('Error:checksum mismatch') and \
+				    not line.startswith('Error:Line Number is not Last Line Number+1') and \
+				    line != 'echo:Unknown command:""\n' and self.isOperational():
 				self._callback.mcMessage(line)
 
 			if self._state == self.STATE_DETECT_BAUDRATE:
@@ -443,65 +445,34 @@ class MachineCom(object):
 				if 'ok' in line:
 					self._log("MachineCom: Ok line " + line)
 					timeout = time.time() + 5
-					self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
-					#self._log("MachineCom: Layer Size" + str(self._jlt_layerCountDict)  )
-					if len(self._jlt_commandList) != self._jlt_gcodePos + 1: #self._commandQueue.empty():
-						#if self._jlt_currentLayerId >= (len(self._jlt_layerCountDict)/2):
-						#	remainingCommands = 0
-						#	self._log("MachineCom: Last Layer Sent ???")
-							#self._log("MachineCom: Command Queue Contents " + str([x for x in self._commandQueue.queue]))
-							#self._changeState(self.STATE_OPERATIONAL)
+					self._printListStats('MachineCom: Ok line ')
+					if len(self._jlt_commandList) != self._jlt_gcodePos + 1:
+						if (len(self._jlt_commandList) - self._jlt_gcodePos < 6) and \
+						   (self._jlt_currentLayerId in self._jlt_layerCountDict):
 
-						#else:
-						# cumulKey = str(self._jlt_currentLayerId) + "cumul"
-						# if cumulKey in self._jlt_layerCountDict:		
-						# 	remainingCommands = (self._jlt_layerCountDict[cumulKey] - self._jlt_gcodePos) + 1
-						# else:
-						# 	remainingCommands = remainingCommands - 1
-						# 	self._jlt_lastLayerSent = True 
-						# self._log("MachineCom: remainingCommands " + str(remainingCommands))
-						#if remainingCommands < 1							
-
-						self._log("MachineCom: Time " + str(time.time() - 1387372448.07))
-
-
-						if (len(self._jlt_commandList) - self._jlt_gcodePos < 6) and (self._jlt_currentLayerId in self._jlt_layerCountDict): #(not self._jlt_lastLayerSent):
-
-							# #for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
-							# if(self._jlt_gcodePos == 0):
-
-	
 							self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
 							self._log("MachineCom: Layer Size " + str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
 							for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
-								#self._log(str(i))
 								self._sendNext()
 							self._jlt_currentLayerId += 1
-							self._log("MachineCom: Updated Queue Size " + str(self._commandQueue.qsize()))
-						
+							self._printListStats('MachineCom: Added next layer ')
+							
+							# Layer has just been sent
+							# Call method to transform next layer
+
+							self.transformNextLayer()
 						self._log("MachineCom: Not in last section (normal)")
 						self._jlt_cmd = self._jlt_commandList[self._jlt_gcodePos]
 						self._log("MachineCom: Popping " + self._jlt_cmd)
 						self._sendCommand(self._jlt_cmd)
-						self._jlt_sentCommands.append(self._jlt_cmd)
 						self._jlt_gcodePos += 1
-						#time.sleep(0.1)
-						#self._log("MachineCom: Command Queue Contents " + str([x for x in self._commandQueue.queue]))
-
 					else:
-						self._log("MachineCom:  Queue is empty so set to operational")
+						self._log("MachineCom:  List is empty so set to operational")
 						self._changeState(self.STATE_OPERATIONAL)
-						# if self._jlt_gcodePos >= len(self._gcodeList)-1:
-						# 	self._log("MachineCom:  Maybe set to operationalal?")
-						# 	self._changeState(self.STATE_OPERATIONAL)
-						# self._log("MachineCom: Sending Next")
-						# self._sendNext()
 						
 				elif "resend" in line.lower() or "rs" in line:
 					self._log("MachineCom: resend line " + line)
 					self._log("MachineCom: Need to resend ")
-					#jlt_wanted_index = 0
-
 					try:
 						self._jlt_gcodePos  = int(line.replace("N:"," ").replace("N"," ").replace(":"," ").split()[-1])
 					except:
@@ -510,9 +481,12 @@ class MachineCom(object):
 						 	self._jlt_gcodePos = int(line.split()[1])
 
 					self._log("MachineCom: Resending " + self._jlt_commandList[self._jlt_gcodePos])
-		 			#self._sendCommand(self._jlt_sentCommands[jlt_wanted_index])
 
 		self._log("Connection closed, closing down monitor")
+
+	def _printListStats(self, message):
+		self._log("%s: List Size %d, Gcode Pos %d, Difference %d" % \
+			     (message, len(self._jlt_commandList), self._jlt_gcodePos, (len(self._jlt_commandList) - self._jlt_gcodePos)))
 
 	def _setBaudrate(self, baudrate):
 		#For linux the pyserial implementation lacks TCGETS2 support. So do that ourselves
@@ -599,13 +573,13 @@ class MachineCom(object):
 		self._log('Send: %s' % (cmd))
 		try:
 			self._serial.write(cmd + '\n')
-			self._log("MachineCom: Queue Size afer serial write " + str(self._commandQueue.qsize()))
+			self._printListStats("MachineCom: After serial write ")
 		except serial.SerialTimeoutException:
 			self._log("Serial timeout while writing to serial port, trying again.")
 			try:
 				time.sleep(0.5)
 				self._serial.write(cmd + '\n')
-				self._log("MachineCom: Queue Size afer serial write attempt 2" + str(self._commandQueue.qsize()))
+				self._printListStats("MachineCom: After serial write attempt 2 ")
 			except:
 				self._log("Unexpected error while writing serial port: %s" % (getExceptionString()))
 				self._errorValue = getExceptionString()
@@ -616,9 +590,6 @@ class MachineCom(object):
 			self.close(True)
 	
 	def _sendNext(self):
-		# if self._gcodePos >= len(self._gcodeList):
-		# 	self._changeState(self.STATE_OPERATIONAL)
-		# 	return
 		if self._gcodePos == 100:
 			self._printStartTime100 = time.time()
 		line = self._gcodeList[self._gcodePos]
@@ -630,7 +601,8 @@ class MachineCom(object):
 				self.setPause(True)
 				line = 'M105'	#Don't send the M0 or M1 to the machine, as M0 and M1 are handled as an LCD menu pause.
 			if self._printSection in self._feedRateModifier:
-				line = re.sub('F([0-9]*)', lambda m: 'F' + str(int(int(m.group(1)) * self._feedRateModifier[self._printSection])), line)
+				line = re.sub('F([0-9]*)', lambda m: 'F' + \
+					    str(int(int(m.group(1)) * self._feedRateModifier[self._printSection])), line)
 			if ('G0' in line or 'G1' in line) and 'Z' in line:
 				z = float(re.search('Z([0-9\.]*)', line).group(1))
 				if self._currentZ != z:
@@ -647,16 +619,62 @@ class MachineCom(object):
 	def sendCommand(self, cmd):
 		cmd = cmd.encode('ascii', 'replace')
 		if self.isPrinting():
-			self._log("MachineCom: Is Printing")
-			self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
+			self._printListStats("MachineCom: Is Printing ")
 			self._jlt_commandList.append(cmd)
-			#self._commandQueue.put(cmd)
 
 		elif self.isOperational():
 			self._log("MachineCom: Is Operational")
 			self._sendCommand(cmd)
 
-	
+	def transformNextLayer(self):
+		# Transforms the next layer waiting to be printed
+
+		nextLayer = self._jlt_currentLayerId
+
+		# Don't modify first five layers
+		if nextLayer < 5:
+			pass
+
+		start = sum([num_lines for (layer_id, num_lines) in self._jlt_layerCountDict.iteritems() if layer_id < nextLayer - 1])
+		end   = start + self._jlt_layerCountDict[nextLayer]
+
+		self._jlt_offset += 10
+
+		for i in range(start, end):
+			self._gcodeList[i] = self.transformLine(self._gcodeList[i], self._jlt_offset)
+
+	def transformLine(self, gcode_line, offset):
+		# Proof of concept: random transform first
+		# So given N5951G1 F3000 X110.27  Y99.80   E127.95342*47
+		# Return   N5951G1 F3000 X+offset Y+offset E127.95342*47
+		x_regex = r'.*X([0-9\.]*)'
+		y_regex = r'.*Y([0-9\.]*)'
+		x_amount = 0
+		y_amount = 0
+
+		if type(gcode_line) is tuple:
+			self._log('Tuple gcode encountered: ' + gcode_line[1])
+			gcode_line = gcode_line[0]
+
+		self._log('Gcode to change ' + gcode_line)
+
+		self._log('Attempted to look in line ' + gcode_line)
+		x_match = re.match(x_regex, gcode_line)
+		y_match = re.match(y_regex, gcode_line)
+
+		if x_match is not None and y_match is not None:
+			x_amount = float(x_match.group(1)) + offset
+			y_amount = float(y_match.group(1)) + offset
+		else:
+			self._log('Failed to match')
+			return gcode_line
+
+		updated_x = re.sub(x_regex, 'X' + str(x_amount), gcode_line)
+		changed_line = re.sub(y_regex, 'Y' + str(y_amount), updated_x)
+
+		self._log('Gcode to change ' + changed_line)
+		return changed_line
+
 	def printGCode(self, gcodeList, layerDict):
 		if not self.isOperational() or self.isPrinting():
 			return
@@ -676,9 +694,8 @@ class MachineCom(object):
 		self._jlt_cmd = self._jlt_commandList[self._jlt_gcodePos]
 		self._log("MachineCom: First Command Popping " + self._jlt_cmd)
 		self._sendCommand(self._jlt_cmd)
-		self._jlt_sentCommands.append(self._jlt_cmd)
 		self._jlt_gcodePos = 1
-		self._log("MachineCom: Layers 0 in queue")
+		self._log("MachineCom: Layers 0 in list")
 		self._jlt_currentLayerId = 1
 	
 	def cancelPrint(self):
