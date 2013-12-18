@@ -608,7 +608,7 @@ class printWindow(wx.Frame):
 
 				jlt_currentLayerId+=1
 				self.jlt_layerCountDict[jlt_currentLayerId] = 0
-				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[str(jlt_currentLayerId - 1) + 'cumul']
+				#self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[str(jlt_currentLayerId - 1) + 'cumul']
 
 				print jlt_currentLayerId
 				
@@ -620,7 +620,7 @@ class printWindow(wx.Frame):
 			line = line.strip()
 			if len(line) > 0:
 				self.jlt_layerCountDict[jlt_currentLayerId] += 1
-				self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] += 1
+				#self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] += 1
 				if prevLineType != lineType:
 					gcodeList.append((line, lineType, ))
 				else:

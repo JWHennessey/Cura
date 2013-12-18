@@ -117,7 +117,7 @@ class VirtualPrinter():
 			if self.readList is None:
 				return ''
 		time.sleep(0.1)
-		#print "Recv: %s" % (self.readList[0].rstrip())
+		self._log("MachineCom: Read line Recv: %s" % (self.readList[0].rstrip()))
 		return self.readList.pop(0)
 	
 	def close(self):
@@ -189,12 +189,16 @@ class MachineCom(object):
 		self._heatupWaitTimeLost = 0.0
 		self._printStartTime100 = None
 
+		self._jlt_cmd = None
 		self._jlt_layerCountDict = None
 		self._jlt_layerBuffer = queue.Queue()
 		self._jlt_gcodePos = 0;
 
 		self._jlt_currentLayerId = 0
 		self._jlt_lastLayerSent = False
+
+		self._jlt_sentCommands = []
+		self._jlt_commandList = []
 		
 		self.thread = threading.Thread(target=self._monitor)
 		self.thread.daemon = True
@@ -337,6 +341,7 @@ class MachineCom(object):
 			timeout = time.time() + 5
 		tempRequestTimeout = timeout
 		while True:
+			#	time.sleep(0.1)
 			line = self._readline()
 			if line is None:
 				break
@@ -360,7 +365,8 @@ class MachineCom(object):
 				if ' B:' in line:
 					self._bedTemp = float(re.search("[0-9\.]*", line.split(' B:')[1]).group(0))
 				self._callback.mcTempUpdate(self._temp, self._bedTemp, self._targetTemp, self._bedTargetTemp)
-				#If we are waiting for an M109 or M190 then measure the time we lost during heatup, so we can remove that time from our printing time estimate.
+				#If we are waiting for an M109 or M190 then measure the time we lost during heatup,
+				#so we can remove that time from our printing time estimate.
 				if not 'ok' in line and self._heatupWaitStartTime != 0:
 					t = time.time()
 					self._heatupWaitTimeLost = t - self._heatupWaitStartTime
@@ -435,10 +441,11 @@ class MachineCom(object):
 						self._sendCommand("M105")
 					tempRequestTimeout = time.time() + 5
 				if 'ok' in line:
+					self._log("MachineCom: Ok line " + line)
 					timeout = time.time() + 5
 					self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
 					#self._log("MachineCom: Layer Size" + str(self._jlt_layerCountDict)  )
-					if not self._commandQueue.empty():
+					if len(self._jlt_commandList) != self._jlt_gcodePos + 1: #self._commandQueue.empty():
 						#if self._jlt_currentLayerId >= (len(self._jlt_layerCountDict)/2):
 						#	remainingCommands = 0
 						#	self._log("MachineCom: Last Layer Sent ???")
@@ -455,31 +462,30 @@ class MachineCom(object):
 						# self._log("MachineCom: remainingCommands " + str(remainingCommands))
 						#if remainingCommands < 1							
 
-						self._log("MachineCom: Time " + str(time.time()))
+						self._log("MachineCom: Time " + str(time.time() - 1387372448.07))
 
 
-						if (self._commandQueue.qsize() < 5) and  (self._jlt_currentLayerId in self._jlt_layerCountDict): #(not self._jlt_lastLayerSent):
+						if (len(self._jlt_commandList) - self._jlt_gcodePos < 6) and (self._jlt_currentLayerId in self._jlt_layerCountDict): #(not self._jlt_lastLayerSent):
 
-							#for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
-							if(self._jlt_gcodePos == 0):
-								jlt_cmd = self._commandQueue.get()
-								self._log("MachineCom: First Command Popping " + jlt_cmd)
-								self._sendCommand(jlt_cmd)
+							# #for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
+							# if(self._jlt_gcodePos == 0):
+
 	
 							self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
 							self._log("MachineCom: Layer Size " + str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
 							for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
-								self._log(str(i))
+								#self._log(str(i))
 								self._sendNext()
 							self._jlt_currentLayerId += 1
 							self._log("MachineCom: Updated Queue Size " + str(self._commandQueue.qsize()))
 						
 						self._log("MachineCom: Not in last section (normal)")
-						jlt_cmd = self._commandQueue.get()
-						self._log("MachineCom: Popping " + jlt_cmd)
-						self._sendCommand(jlt_cmd)
+						self._jlt_cmd = self._jlt_commandList[self._jlt_gcodePos]
+						self._log("MachineCom: Popping " + self._jlt_cmd)
+						self._sendCommand(self._jlt_cmd)
+						self._jlt_sentCommands.append(self._jlt_cmd)
 						self._jlt_gcodePos += 1
-
+						#time.sleep(0.1)
 						#self._log("MachineCom: Command Queue Contents " + str([x for x in self._commandQueue.queue]))
 
 					else:
@@ -492,11 +498,20 @@ class MachineCom(object):
 						# self._sendNext()
 						
 				elif "resend" in line.lower() or "rs" in line:
+					self._log("MachineCom: resend line " + line)
+					self._log("MachineCom: Need to resend ")
+					#jlt_wanted_index = 0
+
 					try:
-						self._gcodePos = int(line.replace("N:"," ").replace("N"," ").replace(":"," ").split()[-1])
+						self._jlt_gcodePos  = int(line.replace("N:"," ").replace("N"," ").replace(":"," ").split()[-1])
 					except:
 						if "rs" in line:
-							self._gcodePos = int(line.split()[1])
+							print "rs in line:\n   " + line
+						 	self._jlt_gcodePos = int(line.split()[1])
+
+					self._log("MachineCom: Resending " + self._jlt_commandList[self._jlt_gcodePos])
+		 			#self._sendCommand(self._jlt_sentCommands[jlt_wanted_index])
+
 		self._log("Connection closed, closing down monitor")
 
 	def _setBaudrate(self, baudrate):
@@ -547,6 +562,7 @@ class MachineCom(object):
 		if ret == '':
 			#self._log("Recv: TIMEOUT")
 			return ''
+
 		self._log("Recv: %s" % (unicode(ret, 'ascii', 'replace').encode('ascii', 'replace').rstrip()))
 		return ret
 	
@@ -633,20 +649,19 @@ class MachineCom(object):
 		if self.isPrinting():
 			self._log("MachineCom: Is Printing")
 			self._log("MachineCom: Queue Size " + str(self._commandQueue.qsize()))
-			self._commandQueue.put(cmd)
-			#print [x for x in self._commandQueue.queue]
+			self._jlt_commandList.append(cmd)
+			#self._commandQueue.put(cmd)
 
 		elif self.isOperational():
 			self._log("MachineCom: Is Operational")
 			self._sendCommand(cmd)
-			#self._gcodePos += 1
-
 
 	
 	def printGCode(self, gcodeList, layerDict):
 		if not self.isOperational() or self.isPrinting():
 			return
 		self._gcodeList = gcodeList
+		self._jlt_gcodePos = 0
 		self._gcodePos = 0
 		self._printStartTime100 = None
 		self._printSection = 'CUSTOM'
@@ -657,8 +672,14 @@ class MachineCom(object):
 		self._jlt_layerCountDict = layerDict
 		for i in range(layerDict[self._jlt_currentLayerId]):
 			self._sendNext()
-		self._log("MachineCom: Layers 0 queue")
-		self._jlt_currentLayerId += 1
+
+		self._jlt_cmd = self._jlt_commandList[self._jlt_gcodePos]
+		self._log("MachineCom: First Command Popping " + self._jlt_cmd)
+		self._sendCommand(self._jlt_cmd)
+		self._jlt_sentCommands.append(self._jlt_cmd)
+		self._jlt_gcodePos = 1
+		self._log("MachineCom: Layers 0 in queue")
+		self._jlt_currentLayerId = 1
 	
 	def cancelPrint(self):
 		if self.isOperational():
@@ -677,4 +698,5 @@ class MachineCom(object):
 
 def getExceptionString():
 	locationInfo = traceback.extract_tb(sys.exc_info()[2])[0]
-	return "%s: '%s' @ %s:%s:%d" % (str(sys.exc_info()[0].__name__), str(sys.exc_info()[1]), os.path.basename(locationInfo[0]), locationInfo[2], locationInfo[1])
+	return "%s: '%s' @ %s:%s:%d" % (str(sys.exc_info()[0].__name__), str(sys.exc_info()[1]),
+		                            os.path.basename(locationInfo[0]), locationInfo[2], locationInfo[1])
