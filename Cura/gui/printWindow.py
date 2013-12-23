@@ -317,11 +317,17 @@ class printWindow(wx.Frame):
         sizer = wx.GridBagSizer(2, 2)
         self.offsetPanel.SetSizer(sizer)
 
-        self.offsetSelect = wx.SpinCtrl(self.offsetPanel, -1, "0", size=(21 * 3, 21), style=wx.SP_ARROW_KEYS)
-        self.offsetSelect.SetRange(-2, 2)
-        sizer.Add(wx.StaticText(self.offsetPanel, -1, _("Offset size:")), pos=(0, 0))
-        sizer.Add(self.offsetSelect, pos=(0, 1))
+        self.offsetXSelect = wx.SpinCtrl(self.offsetPanel, -1, "0", size=(21 * 3, 21), style=wx.SP_ARROW_KEYS)
+        self.offsetXSelect.SetRange(-20, 20)
+        sizer.Add(wx.StaticText(self.offsetPanel, -1, _("Offset X:")), pos=(0, 0))
+        sizer.Add(self.offsetXSelect, pos=(0, 1))
         sizer.Add(wx.StaticText(self.offsetPanel, -1, "%"), pos=(0, 2))
+
+        self.offsetYSelect = wx.SpinCtrl(self.offsetPanel, -1, "0", size=(21 * 3, 21), style=wx.SP_ARROW_KEYS)
+        self.offsetYSelect.SetRange(-20, 20)
+        sizer.Add(wx.StaticText(self.offsetPanel, -1, _("Offset Y:")), pos=(1, 0))
+        sizer.Add(self.offsetYSelect, pos=(1, 1))
+        sizer.Add(wx.StaticText(self.offsetPanel, -1, "%"), pos=(1, 2))
 
         nb.AddPage(self.offsetPanel, _("Offset Plugin"))
 
@@ -345,8 +351,8 @@ class printWindow(wx.Frame):
         self.Bind(wx.EVT_SPINCTRL, self.OnSpeedChange, self.supportSpeedSelect)
 
 
-        self.Bind(wx.EVT_SPINCTRL, self.OnOffsetChange, self.offsetSelect)
-
+        self.Bind(wx.EVT_SPINCTRL, self.OnOffsetXChange, self.offsetXSelect)
+        self.Bind(wx.EVT_SPINCTRL, self.OnOffsetYChange, self.offsetYSelect)
 
         self.Bind(wx.EVT_TEXT_ENTER, self.OnTermEnterLine, self.termInput)
         self.termInput.Bind(wx.EVT_CHAR, self.OnTermKey)
@@ -500,7 +506,8 @@ class printWindow(wx.Frame):
         status += 'Printed: %d\n' % (self.machineCom.getLastPrintedLayer())
         status += 'Printing: %d\n' % (self.machineCom.getPrintingLayer())
         status += 'Can Edit: %d\n' % (self.machineCom.getCanEditLayer())
-        status += 'Offset: %d\n' % (self.machineCom.getCanEditLayerOffset())
+        status += 'Offset X: %0.1f\n' % (self.machineCom.getCanEditLayerOffsetX())
+        status += 'Offset Y: %0.1f\n' % (self.machineCom.getCanEditLayerOffsetY())
         self.statsText.SetLabel(status.strip())
 
     def OnConnect(self, e):
@@ -565,11 +572,16 @@ class printWindow(wx.Frame):
         self.machineCom.setFeedrateModifier('SUPPORT', self.supportSpeedSelect.GetValue() / 100.0)
 
 
-    def OnOffsetChange(self, e):
+    def OnOffsetXChange(self, e):
         if self.machineCom is None:
             return
-        self.machineCom.setCanEditLayerOffset(self.offsetSelect.GetValue())
+        self.machineCom.setCanEditLayerOffsetX(float(self.offsetXSelect.GetValue()) / 10)
 
+    def OnOffsetYChange(self, e):
+        if self.machineCom is None:
+            return
+        self.machineCom.setCanEditLayerOffsetY(float(self.offsetYSelect.GetValue()) / 10)
+    
     def AddTermLog(self, line):
         if len(self.termLog.GetValue()) > 10000:
             self.termLog.SetValue(self.termLog.GetValue()[-10000:])

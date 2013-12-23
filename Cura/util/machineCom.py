@@ -199,7 +199,8 @@ class MachineCom(object):
         self._jlt_currentLayerId = 0
         self._jlt_lastLayerSent = False
         self._jlt_commandList = []
-        self._jlt_offset = 0
+        self._jlt_offset_x = 0
+        self._jlt_offset_y = 0
         
         self.thread = threading.Thread(target=self._monitor)
         self.thread.daemon = True
@@ -293,13 +294,19 @@ class MachineCom(object):
     def getBedTemp(self):
         return self._bedTemp
 
-    def getCanEditLayerOffset(self):
-        return self._jlt_offset
+    def getCanEditLayerOffsetX(self):
+        return self._jlt_offset_x
 
-    def setCanEditLayerOffset(self, offset):
-        self._jlt_offset = offset
-        self._log("Offset Changes: " + str(self._jlt_offset ))
+    def getCanEditLayerOffsetY(self):
+        return self._jlt_offset_y
+    
+    def setCanEditLayerOffsetX(self, offset):
+        self._jlt_offset_x = offset
+        self._log("Offset X Changes: " + str(self._jlt_offset_x))
 
+    def setCanEditLayerOffsetY(self, offset):
+        self._jlt_offset_y = offset
+        self._log("Offset Y Changes: " + str(self._jlt_offset_y ))
     
     def getLog(self):
         ret = []
@@ -669,10 +676,10 @@ class MachineCom(object):
         
 
         for i in range(start, end):
-            self._gcodeList[i] = self.transformLine(self._gcodeList[i], self._jlt_offset)
+            self._gcodeList[i] = self.transformLine(self._gcodeList[i])
             self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
 
-    def transformLine(self, gcode_line, offset):
+    def transformLine(self, gcode_line):
         # Proof of concept: random transform first
         # So given N5951G1 F3000 X110.27  Y99.80   E127.95342*47
         # Return   N5951G1 F3000 X+offset Y+offset E127.95342*47
@@ -691,8 +698,8 @@ class MachineCom(object):
         y_match = re.match('.*' + y_regex, gcode_line)
 
         if x_match is not None and y_match is not None:
-            x_amount = float(x_match.group(1)) + offset
-            y_amount = float(y_match.group(1)) + offset
+            x_amount = float(x_match.group(1)) + self._jlt_offset_x
+            y_amount = float(y_match.group(1)) + self._jlt_offset_y
         else:
             self._log('Failed to match')
             return gcode_line
