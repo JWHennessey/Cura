@@ -280,9 +280,26 @@ class MachineCom(object):
     
     def getTemp(self):
         return self._temp
-    
+   
+    def getPrintingLayer(self):
+        return self._jlt_currentLayerId - 2
+
+    def getLastPrintedLayer(self):
+        return self._jlt_currentLayerId - 3
+
+    def getCanEditLayer(self):
+        return self._jlt_currentLayerId + 1
+
     def getBedTemp(self):
         return self._bedTemp
+
+    def getCanEditLayerOffset(self):
+        return self._jlt_offset
+
+    def setCanEditLayerOffset(self, offset):
+        self._jlt_offset = offset
+        self._log("Offset Changes: " + str(self._jlt_offset ))
+
     
     def getLog(self):
         ret = []
@@ -638,11 +655,12 @@ class MachineCom(object):
         # Transforms the next layer waiting to be printed
 
         if(self._jlt_currentLayerId < len(self._jlt_layerCountDict)-6):
-            self._jlt_offset += 0.05
+            #self._jlt_offset += 0.05
+            pass
 
         nextLayer = self._jlt_currentLayerId + 1
         # Don't modify first five layers
-        if nextLayer < 5 or nextLayer > (len(self._jlt_layerCountDict)-1) :
+        if nextLayer < 5 or nextLayer > (len(self._jlt_layerCountDict)-2) :
             return
 
         start = sum([num_lines for (layer_id, num_lines) in self._jlt_layerCountDict.iteritems() if layer_id < nextLayer - 1])
