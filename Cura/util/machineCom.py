@@ -453,11 +453,11 @@ class MachineCom(object):
                            (self._jlt_currentLayerId in self._jlt_layerCountDict):
                             self._log("MachineCom: Sending Layer " + str(self._jlt_currentLayerId))
                             self._log("MachineCom: Layer Size " + str(self._jlt_layerCountDict[self._jlt_currentLayerId]))
-                            self._log('\n CommandListBefore >>> '.join(str(p) for p in self._jlt_commandList) )
+                            #self._log('\n CommandListBefore >>> '.join(str(p) for p in self._jlt_commandList) )
                             for i in range(self._jlt_layerCountDict[self._jlt_currentLayerId]):
                                 self._sendNext()
 
-                            self._log('\n CommandListAfter >>> '.join(str(p) for p in self._jlt_commandList) )
+                            #self._log('\n CommandListAfter >>> '.join(str(p) for p in self._jlt_commandList) )
                             self._jlt_currentLayerId += 1
                             timediff = dt.datetime.now() - self._jlt_time
                             self._log(str(timediff))
@@ -467,7 +467,7 @@ class MachineCom(object):
                             # Call method to transform next layer
                             
                             self.transformNextLayer()
-                            self._log('\n GcodeList>>> '.join(str(p) for p in self._gcodeList) )
+                            #self._log('\n GcodeList>>> '.join(str(p) for p in self._gcodeList) )
                         #self._log("MachineCom: Not in last section (normal)")
                         self._jlt_cmd = self._jlt_commandList[self._jlt_gcodePos]
                         #self._log("MachineCom: Popping " + self._jlt_cmd)
@@ -637,18 +637,18 @@ class MachineCom(object):
     def transformNextLayer(self):
         # Transforms the next layer waiting to be printed
 
-        if(self._jlt_currentLayerId >= 99):
-            return
+        if(self._jlt_currentLayerId < len(self._jlt_layerCountDict)-6):
+            self._jlt_offset += 0.05
 
         nextLayer = self._jlt_currentLayerId + 1
         # Don't modify first five layers
-        if nextLayer < 5:
+        if nextLayer < 5 or nextLayer > (len(self._jlt_layerCountDict)-1) :
             return
 
         start = sum([num_lines for (layer_id, num_lines) in self._jlt_layerCountDict.iteritems() if layer_id < nextLayer - 1])
         end   = start + self._jlt_layerCountDict[nextLayer]
 
-        self._jlt_offset = 10
+        
 
         for i in range(start, end):
             self._gcodeList[i] = self.transformLine(self._gcodeList[i], self._jlt_offset)
@@ -658,19 +658,19 @@ class MachineCom(object):
         # Proof of concept: random transform first
         # So given N5951G1 F3000 X110.27  Y99.80   E127.95342*47
         # Return   N5951G1 F3000 X+offset Y+offset E127.95342*47
-        x_regex = r'.*X([0-9\.]*)'
-        y_regex = r'.*Y([0-9\.]*)'
+        x_regex = r'X([0-9\.]*)'
+        y_regex = r'Y([0-9\.]*)'
         x_amount = 0
         y_amount = 0
 
         if type(gcode_line) is tuple:
-            self._log('Tuple gcode encountered: ' + gcode_line[1])
+            print('Tuple gcode encountered: ' + gcode_line[1])
             gcode_line = gcode_line[0]
 
         self._log('Gcode to change ' + gcode_line)
 
-        x_match = re.match(x_regex, gcode_line)
-        y_match = re.match(y_regex, gcode_line)
+        x_match = re.match('.*' + x_regex, gcode_line)
+        y_match = re.match('.*' + y_regex, gcode_line)
 
         if x_match is not None and y_match is not None:
             x_amount = float(x_match.group(1)) + offset
