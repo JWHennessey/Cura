@@ -26,6 +26,8 @@ def main():
 	parser.add_option("-o", "--output", action="store", type="string", dest="output",
 		help="path to write sliced file to")
 
+	print 'Main Loop'
+
 	(options, args) = parser.parse_args()
 
 	profile.loadPreferences(profile.getPreferencePath())

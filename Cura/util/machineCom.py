@@ -673,11 +673,18 @@ class MachineCom(object):
         start = sum([num_lines for (layer_id, num_lines) in self._jlt_layerCountDict.iteritems() if layer_id < nextLayer - 1])
         end   = start + self._jlt_layerCountDict[nextLayer]
 
-        
+        print 'NEWGCODE:' + str(self._gcodePos)
 
         for i in range(start, end):
             self._gcodeList[i] = self.transformLine(self._gcodeList[i])
             self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
+
+        for i in range(len(self._gcodeList)):
+            if type(self._gcodeList[i]) is tuple:
+                line = self._gcodeList[i][0]
+            else:
+                line = self._gcodeList[i]
+            print 'GCODE:' + line
 
     def transformLine(self, gcode_line):
         # Proof of concept: random transform first

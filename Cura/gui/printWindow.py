@@ -1,26 +1,49 @@
 from __future__ import absolute_import
 __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AGPLv3 License"
 
+
+import wx
+import numpy
+import time
+import os
+import traceback
 import threading
+import math
+import platform
+
 import re
 import subprocess
 import sys
-import time
-import platform
-import os
 import power
 import datetime
 import shutil
 
-import wx
+
+
 from wx.lib import buttons
 
+#import OpenGL
+#OpenGL.ERROR_CHECKING = False
+#from OpenGL.GLU import *
+#from OpenGL.GL import *
+
+from Cura.util import profile
+from Cura.util import meshLoader
+from Cura.util import objectScene
+from Cura.util import sliceEngine
+from Cura.util import removableStorage
+from Cura.util import gcodeInterpreter
+from Cura.gui.util import previewTools
+from Cura.gui.util import opengl
+from Cura.gui.util import openglGui
+from Cura.gui.tools import youmagineGui
+from Cura.gui.tools import imageToMesh
 from Cura.gui.util import webcam
 from Cura.gui.util import taskbar
 from Cura.util import machineCom
 from Cura.util import gcodeInterpreter
 from Cura.util import resources
-from Cura.util import profile
+#from Cura.gui.sceneView import SceneView
 
 #The printProcessMonitor is used from the main GUI python process. This monitors the printing python process.
 # This class also handles starting of the 2nd process for printing and all communications with it.
@@ -31,6 +54,8 @@ class printProcessMonitor():
         self._z = 0.0
         self._callback = callback
         self._id = -1
+        self._gcode = []
+        self._gcodePos = 0
 
     def loadFile(self, filename, id):
         if self.handle is None:
@@ -58,6 +83,7 @@ class printProcessMonitor():
         line = p.stdout.readline()
         while len(line) > 0:
             line = line.rstrip()
+            print line
             try:
                 if line.startswith('Z:'):
                     self._z = float(line[2:])
@@ -65,6 +91,11 @@ class printProcessMonitor():
                 elif line.startswith('STATE:'):
                     self._state = line[6:]
                     self._callCallback()
+                elif line.startswith('NEWGCODE:'):
+                    self._gcode = []
+                    self._gcodePos = long(line[9:])
+                elif line.startswith('GCODE:'):
+                    self._gcode.append(line[6:])
                 else:
                     print '>' + line.rstrip()
             except:
@@ -86,6 +117,12 @@ class printProcessMonitor():
 
     def getState(self):
         return self._state
+
+    def getGcode(self):
+        return self._gcode
+
+    def getGcodePos(self):
+        return self._gcodePos
 
     def _callCallback(self):
         if self._callback is not None:
@@ -130,7 +167,7 @@ class printWindow(wx.Frame):
     "Main user interface window"
 
     def __init__(self):
-        super(printWindow, self).__init__(None, -1, title=_("Printing"))
+        super(printWindow, self).__init__(None, -1, title=_("Printing") )
         t = time.time()
         self.machineCom = None
         self.gcode = None
@@ -147,6 +184,9 @@ class printWindow(wx.Frame):
         self.pause = False
         self.termHistory = []
         self.termHistoryIdx = 0
+
+        self._sv = None
+
 
         self.jlt_layerCountDict = {}
 
@@ -310,7 +350,7 @@ class printWindow(wx.Frame):
 
         nb.AddPage(self.termPanel, _("Term"))
 
-        #START OF OUR CUSTOM PANEL
+        #START OF OUR OFFSET PANEL
 
         self.offsetPanel = wx.Panel(nb)
 
@@ -331,7 +371,23 @@ class printWindow(wx.Frame):
 
         nb.AddPage(self.offsetPanel, _("Offset Plugin"))
 
-        #END OF OUR CUSTOM PANEL
+        #END OF OUR OFFSET PANEL
+
+        #START OF OUR VIS PANEL
+
+        self.plainPanel = wx.Panel(nb)
+        sizer = wx.BoxSizer()#wx.VERTICAL)
+
+        self.glVisPanel = visPanel(self.plainPanel)
+
+        self.plainPanel.SetSizer(sizer)
+
+
+        sizer.Add(self.glVisPanel, 1, flag=wx.EXPAND)
+
+        nb.AddPage(self.plainPanel, _("Visulisation Plugin"))
+
+        #END OF OUR VIS PANEL
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.connectButton.Bind(wx.EVT_BUTTON, self.OnConnect)
@@ -735,6 +791,14 @@ class printWindow(wx.Frame):
         if self.cam is not None:
             wx.CallAfter(self.cam.takeNewImage)
             wx.CallAfter(self.camPreview.Refresh)
+
+
+class visPanel(openglGui.glGuiPanel):#SceneView):
+    def __init__(self, parent):
+        super(visPanel, self).__init__(parent)
+
+        #self._drawMachine()
+        #self.SetSize((800, 800))
 
 
 class temperatureGraph(wx.Panel):

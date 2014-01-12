@@ -1127,6 +1127,7 @@ void main(void)
 		self._drawMachine()
 
 		if self._usbPrintMonitor.getState() == 'PRINTING' and self._usbPrintMonitor.getID() == self._slicer.getID():
+			self._gcode.load(self._usbPrintMonitor.getGcode())
 			glEnable(GL_BLEND)
 			z = self._usbPrintMonitor.getZ()
 			size = self._machineSize
