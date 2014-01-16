@@ -83,7 +83,7 @@ class printProcessMonitor():
         line = p.stdout.readline()
         while len(line) > 0:
             line = line.rstrip()
-            print line
+            #print line
             try:
                 if line.startswith('Z:'):
                     self._z = float(line[2:])
@@ -96,6 +96,8 @@ class printProcessMonitor():
                     self._gcodePos = long(line[9:])
                 elif line.startswith('GCODE:'):
                     self._gcode.append(line[6:])
+                elif line.startswith('GCODE-TUPLE:'):
+                    self._gcode.append(tuple(line[12:].split(':')))
                 else:
                     print '>' + line.rstrip()
             except:
@@ -186,7 +188,7 @@ class printWindow(wx.Frame):
         self.termHistoryIdx = 0
 
         self._sv = None
-
+        self._gcodeOriginal = None
 
         self.jlt_layerCountDict = {}
 
@@ -586,7 +588,7 @@ class printWindow(wx.Frame):
         self.currentZ = -1
         if self.cam is not None and self.timelapsEnable.GetValue():
             self.cam.startTimelapse(self.timelapsSavePath.GetValue())
-        self.machineCom.printGCode(self.gcodeList, self.jlt_layerCountDict)
+        self.machineCom.printGCode(self.gcodeList, self.jlt_layerCountDict, self._gcodeOriginal)
         self.UpdateButtonStates()
 
     def OnCancel(self, e):
@@ -682,7 +684,7 @@ class printWindow(wx.Frame):
             self.Layout()
 
     def LoadGCodeFile(self, filename):
-        shutil.copyfile(filename, "/Users/JamesHennessey/Sites/Cura/test_files/currentGcode.txt")
+        shutil.copyfile(filename, "/Users/JamesHennessey/Projects/Cura/test_files/currentGcode.txt")
 
         if self.machineCom is not None and self.machineCom.isPrinting():
             return False
@@ -701,7 +703,7 @@ class printWindow(wx.Frame):
                 self.jlt_layerCountDict[jlt_currentLayerId] = 0
                 #self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[str(jlt_currentLayerId - 1) + 'cumul']
 
-                print jlt_currentLayerId
+                #print jlt_currentLayerId
                 
             if line.startswith(';TYPE:'):
                 lineType = line[6:].strip()
@@ -723,6 +725,8 @@ class printWindow(wx.Frame):
         self.filename = filename
         self.gcode = gcode
         self.gcodeList = gcodeList
+        f = open(self.filename)
+        self._gcodeOriginal = f.readlines()
         #print "PrintWindo: " + str(gcodeList)
         wx.CallAfter(self.progress.SetRange, len(gcodeList))
         wx.CallAfter(self.UpdateButtonStates)

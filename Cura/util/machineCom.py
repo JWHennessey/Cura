@@ -201,7 +201,9 @@ class MachineCom(object):
         self._jlt_commandList = []
         self._jlt_offset_x = 0
         self._jlt_offset_y = 0
-        
+        self._gcodeOriginal = None
+
+
         self.thread = threading.Thread(target=self._monitor)
         self.thread.daemon = True
         self.thread.start()
@@ -679,12 +681,28 @@ class MachineCom(object):
             self._gcodeList[i] = self.transformLine(self._gcodeList[i])
             self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
 
+        #glistIndex = 0
+        #for i in range(len(self._gcodeOriginal)):
+            #if self._gcodeOriginal[i]:
+                #if(self._gcodeOriginal[i].startswith(';')):
+                    #line = self._gcodeOriginal[i]
+                #else:
+                    #if type(self._gcodeList[glistIndex]) is tuple:
+                        #line = 'GCODE-TUPLE:' + self._gcodeList[glistIndex][0] + ':' + self._gcodeList[glistIndex][1]
+                    #else:
+                        #line = self._gcodeList[glistIndex]
+                    #glistIndex += 1
+
+                #print 'GCODE:' + line
+
         for i in range(len(self._gcodeList)):
             if type(self._gcodeList[i]) is tuple:
-                line = self._gcodeList[i][0]
+                print 'GCODE-TUPLE:' + self._gcodeList[i][0] + ':' + self._gcodeList[i][1]
             else:
-                line = self._gcodeList[i]
-            print 'GCODE:' + line
+                print 'GCODE:' + self._gcodeList[i]
+
+
+
 
     def transformLine(self, gcode_line):
         # Proof of concept: random transform first
@@ -717,9 +735,10 @@ class MachineCom(object):
         self._log('Gcode changed ' + changed_line)
         return changed_line
 
-    def printGCode(self, gcodeList, layerDict):
+    def printGCode(self, gcodeList, layerDict, original):
         if not self.isOperational() or self.isPrinting():
             return
+        self._gcodeOriginal = original
         self._gcodeList = gcodeList
         self._jlt_gcodePos = 0
         self._gcodePos = 0
@@ -739,6 +758,10 @@ class MachineCom(object):
         self._jlt_gcodePos = 1
         self._log("MachineCom: Layers 0 in list")
         self._jlt_currentLayerId = 1
+
+        #print gcodeList
+        #print "END GCODE LIST"
+        #sys.exit()
     
     def cancelPrint(self):
         if self.isOperational():
