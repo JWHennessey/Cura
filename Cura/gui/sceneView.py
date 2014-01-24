@@ -972,12 +972,12 @@ void main(void)
 
         if self.viewMode == 'gcode':
             if self._gcode is not None and self._gcode.layerList is None:
-                print "Gcode Layer List is NONE"
+                #print "Gcode Layer List is NONE"
                 self._gcodeLoadThread = threading.Thread(target=self._loadGCode)
                 self._gcodeLoadThread.daemon = True
                 self._gcodeLoadThread.start()
             if self._gcode is not None and self._gcode.layerList is not None:
-                print "Gcode Layer List is NOT NONE"
+                #print "Gcode Layer List is NOT NONE"
                 glPushMatrix()
                 if profile.getMachineSetting('machine_center_is_zero') != 'True':
                     glTranslate(-self._machineSize[0] / 2, -self._machineSize[1] / 2, 0)
@@ -1129,8 +1129,10 @@ void main(void)
         self._drawMachine()
 
         if self._usbPrintMonitor.getState() == 'PRINTING' and self._usbPrintMonitor.getID() == self._slicer.getID():
-            
             self._gcode.loadList(self._usbPrintMonitor.getGcode())
+            #print "GCODE LAYER LIST START"
+            #print self._gcode.layerList
+            #print "GCODE LAYER LIST END"
             glEnable(GL_BLEND)
             z = self._usbPrintMonitor.getZ()
             size = self._machineSize

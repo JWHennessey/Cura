@@ -491,7 +491,6 @@ class MachineCom(object):
 
                             # Layer has just been sent
                             # Call method to transform next layer
-                            
                             self.transformNextLayer()
                             #self._log('\n GcodeList>>> '.join(str(p) for p in self._gcodeList) )
                         #self._log("MachineCom: Not in last section (normal)")
@@ -673,31 +672,23 @@ class MachineCom(object):
             return
 
         start = sum([num_lines for (layer_id, num_lines) in self._jlt_layerCountDict.iteritems() if layer_id < nextLayer - 1])
-        end   = start + self._jlt_layerCountDict[nextLayer]
-
+        #end   = start + self._jlt_layerCountDict[nextLayer]
+        end = len(self._gcodeList)-9
+        
         print 'NEWGCODE:' + str(self._gcodePos)
 
         for i in range(start, end):
-            self._gcodeList[i] = self.transformLine(self._gcodeList[i])
+            self._gcodeList[i] = self.transformLine(self._gcodeOriginal[i])
             self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
 
-        #glistIndex = 0
-        #for i in range(len(self._gcodeOriginal)):
-            #if self._gcodeOriginal[i]:
-                #if(self._gcodeOriginal[i].startswith(';')):
-                    #line = self._gcodeOriginal[i]
-                #else:
-                    #if type(self._gcodeList[glistIndex]) is tuple:
-                        #line = 'GCODE-TUPLE:' + self._gcodeList[glistIndex][0] + ':' + self._gcodeList[glistIndex][1]
-                    #else:
-                        #line = self._gcodeList[glistIndex]
-                    #glistIndex += 1
-
-                #print 'GCODE:' + line
-
+        layerIndex = 1
         for i in range(len(self._gcodeList)):
+            if(i == sum([self._jlt_layerCountDict[x] for x in range(layerIndex)])):
+                print 'GCODE:;LAYER:' + str(layerIndex)
+                layerIndex += 1
             if type(self._gcodeList[i]) is tuple:
-                print 'GCODE-TUPLE:' + self._gcodeList[i][0] + ':' + self._gcodeList[i][1]
+                print 'GCODE:;TYPE:'+ self._gcodeList[i][1]
+                print 'GCODE:' + self._gcodeList[i][0]
             else:
                 print 'GCODE:' + self._gcodeList[i]
 
@@ -738,7 +729,7 @@ class MachineCom(object):
     def printGCode(self, gcodeList, layerDict, original):
         if not self.isOperational() or self.isPrinting():
             return
-        self._gcodeOriginal = original
+        self._gcodeOriginal = list(gcodeList)
         self._gcodeList = gcodeList
         self._jlt_gcodePos = 0
         self._gcodePos = 0

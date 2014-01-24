@@ -62,7 +62,6 @@ class gcode(object):
         return None
     
     def _load(self, gcodeFile):
-        print gcodeFile
         self.layerList = []
         pos = [0.0,0.0,0.0]
         posOffset = [0.0, 0.0, 0.0]
@@ -85,6 +84,7 @@ class gcode(object):
 
         currentLayer.append(currentPath)
         for line in gcodeFile:
+            print line
             if type(line) is tuple:
                 line = line[0]
 
