@@ -15,7 +15,7 @@ OpenGL.ERROR_CHECKING = False
 from OpenGL.GLU import *
 from OpenGL.GL import *
 
-from Cura.gui import printWindow
+from Cura.gui import printProcessMonitor
 from Cura.util import profile
 from Cura.util import meshLoader
 from Cura.util import objectScene
@@ -55,7 +55,7 @@ class SceneView(openglGui.glGuiPanel):
         self._animZoom = None
         self._platformMesh = {}
         self._isSimpleMode = True
-        self._usbPrintMonitor = printWindow.printProcessMonitor(lambda : self._queueRefresh())
+        self._usbPrintMonitor = printProcessMonitor.printProcessMonitor(lambda : self._queueRefresh())
 
         self._viewport = None
         self._modelMatrix = None

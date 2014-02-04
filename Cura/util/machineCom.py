@@ -305,11 +305,15 @@ class MachineCom(object):
     def setCanEditLayerOffsetX(self, offset):
         self._jlt_offset_x = offset
         self._log("Offset X Changes: " + str(self._jlt_offset_x))
+        self.transformNextLayer()
+        return self._gcodeList
 
     def setCanEditLayerOffsetY(self, offset):
         self._jlt_offset_y = offset
         self._log("Offset Y Changes: " + str(self._jlt_offset_y ))
-    
+        self.transformNextLayer()
+        return self._gcodeList
+
     def getLog(self):
         ret = []
         while not self._logQueue.empty():
@@ -675,22 +679,22 @@ class MachineCom(object):
         #end   = start + self._jlt_layerCountDict[nextLayer]
         end = len(self._gcodeList)-9
         
-        print 'NEWGCODE:' + str(self._gcodePos)
+        #print 'NEWGCODE:' + str(self._gcodePos)
 
         for i in range(start, end):
             self._gcodeList[i] = self.transformLine(self._gcodeOriginal[i])
             self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
 
-        layerIndex = 1
-        for i in range(len(self._gcodeList)):
-            if(i == sum([self._jlt_layerCountDict[x] for x in range(layerIndex)])):
-                print 'GCODE:;LAYER:' + str(layerIndex)
-                layerIndex += 1
-            if type(self._gcodeList[i]) is tuple:
-                print 'GCODE:;TYPE:'+ self._gcodeList[i][1]
-                print 'GCODE:' + self._gcodeList[i][0]
-            else:
-                print 'GCODE:' + self._gcodeList[i]
+        #layerIndex = 1
+        #for i in range(len(self._gcodeList)):
+            #if(i == sum([self._jlt_layerCountDict[x] for x in range(layerIndex)])):
+                #print 'GCODE:;LAYER:' + str(layerIndex)
+                #layerIndex += 1
+            #if type(self._gcodeList[i]) is tuple:
+                #print 'GCODE:;TYPE:'+ self._gcodeList[i][1]
+                #print 'GCODE:' + self._gcodeList[i][0]
+            #else:
+                #print 'GCODE:' + self._gcodeList[i]
 
 
 
@@ -765,6 +769,9 @@ class MachineCom(object):
                 self._sendNext()
         if pause and self.isPrinting():
             self._changeState(self.STATE_PAUSED)
+
+    def getGcodeList(self):
+        return self._gcodeList[i]
     
     def setFeedrateModifier(self, type, value):
         self._feedRateModifier[type] = value

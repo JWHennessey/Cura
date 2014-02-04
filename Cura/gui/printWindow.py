@@ -43,92 +43,10 @@ from Cura.gui.util import taskbar
 from Cura.util import machineCom
 from Cura.util import gcodeInterpreter
 from Cura.util import resources
+
+from Cura.gui.sceneView import SceneView
 #from Cura.gui.sceneView import SceneView
 
-#The printProcessMonitor is used from the main GUI python process. This monitors the printing python process.
-# This class also handles starting of the 2nd process for printing and all communications with it.
-class printProcessMonitor():
-    def __init__(self, callback = None):
-        self.handle = None
-        self._state = 'CLOSED'
-        self._z = 0.0
-        self._callback = callback
-        self._id = -1
-        self._gcode = []
-        self._gcodePos = 0
-
-    def loadFile(self, filename, id):
-        if self.handle is None:
-            if platform.system() == "Darwin" and hasattr(sys, 'frozen'):
-                cmdList = [os.path.join(os.path.dirname(sys.executable), 'Cura')]
-            else:
-                cmdList = [sys.executable, '-m', 'Cura.cura']
-            cmdList.append('-r')
-            cmdList.append(filename)
-            if platform.system() == "Darwin":
-                if platform.machine() == 'i386':
-                    cmdList.insert(0, 'arch')
-                    cmdList.insert(1, '-i386')
-            #Save the preferences before starting the print window so we use the proper machine settings.
-            profile.savePreferences(profile.getPreferencePath())
-            self.handle = subprocess.Popen(cmdList, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.thread = threading.Thread(target=self.Monitor)
-            self.thread.start()
-        else:
-            self.handle.stdin.write('LOAD:%s\n' % filename)
-        self._id = id
-
-    def Monitor(self):
-        p = self.handle
-        line = p.stdout.readline()
-        while len(line) > 0:
-            line = line.rstrip()
-            #print line
-            try:
-                if line.startswith('Z:'):
-                    self._z = float(line[2:])
-                    self._callCallback()
-                elif line.startswith('STATE:'):
-                    self._state = line[6:]
-                    self._callCallback()
-                elif line.startswith('NEWGCODE:'):
-                    self._gcode = []
-                    self._gcodePos = long(line[9:])
-                elif line.startswith('GCODE:'):
-                    self._gcode.append(line[6:])
-                elif line.startswith('GCODE-TUPLE:'):
-                    self._gcode.append(tuple(line[12:].split(':')))
-                else:
-                    print '>' + line.rstrip()
-            except:
-                print sys.exc_info()
-            line = p.stdout.readline()
-        line = p.stderr.readline()
-        while len(line) > 0:
-            print '>>' + line.rstrip()
-            line = p.stderr.readline()
-        p.communicate()
-        self.handle = None
-        self.thread = None
-
-    def getID(self):
-        return self._id
-
-    def getZ(self):
-        return self._z
-
-    def getState(self):
-        return self._state
-
-    def getGcode(self):
-        return self._gcode
-
-    def getGcodePos(self):
-        return self._gcodePos
-
-    def _callCallback(self):
-        if self._callback is not None:
-            self._callback()
 
 def startPrintInterface(filename):
     #startPrintInterface is called from the main script when we want the printer interface to run in a separate process.
@@ -197,7 +115,7 @@ class printWindow(wx.Frame):
         self.SetSizer(wx.BoxSizer())
         self.panel = wx.Panel(self)
         self.GetSizer().Add(self.panel, 1, flag=wx.EXPAND)
-        self.sizer = wx.GridBagSizer(2, 2)
+        self.sizer = wx.GridBagSizer(20, 15)
         self.panel.SetSizer(self.sizer)
 
         sb = wx.StaticBox(self.panel, label=_("Statistics"))
@@ -219,7 +137,7 @@ class printWindow(wx.Frame):
         self.statsText = wx.StaticText(self.panel, -1, _(""))
         boxsizer.Add(self.statsText, flag=wx.LEFT, border=5)
 
-        self.sizer.Add(boxsizer, pos=(0, 0), span=(7, 1), flag=wx.EXPAND)
+        self.sizer.Add(boxsizer, pos=(0, 0), span=(15, 1), flag=wx.EXPAND)
 
         self.connectButton = wx.Button(self.panel, -1, _("Connect"))
         #self.loadButton = wx.Button(self.panel, -1, 'Load')
@@ -235,11 +153,11 @@ class printWindow(wx.Frame):
         self.sizer.Add(self.pauseButton, pos=(3, 1), flag=wx.EXPAND)
         self.sizer.Add(self.cancelButton, pos=(4, 1), flag=wx.EXPAND)
         self.sizer.Add(self.machineLogButton, pos=(5, 1), flag=wx.EXPAND)
-        self.sizer.Add(self.progress, pos=(7, 0), span=(1, 7), flag=wx.EXPAND)
+        self.sizer.Add(self.progress, pos=(15, 0), span=(1, 10), flag=wx.EXPAND)
 
         nb = wx.Notebook(self.panel)
         self.tabs = nb
-        self.sizer.Add(nb, pos=(0, 2), span=(7, 4), flag=wx.EXPAND)
+        self.sizer.Add(nb, pos=(0, 2), span=(15, 6), flag=wx.EXPAND)
 
         self.temperaturePanel = wx.Panel(nb)
         sizer = wx.GridBagSizer(2, 2)
@@ -371,7 +289,7 @@ class printWindow(wx.Frame):
         sizer.Add(self.offsetYSelect, pos=(1, 1))
         sizer.Add(wx.StaticText(self.offsetPanel, -1, "%"), pos=(1, 2))
 
-        nb.AddPage(self.offsetPanel, _("Offset Plugin"))
+        nb.AddPage(self.offsetPanel, _("Offset"))
 
         #END OF OUR OFFSET PANEL
 
@@ -387,7 +305,7 @@ class printWindow(wx.Frame):
 
         sizer.Add(self.glVisPanel, 1, flag=wx.EXPAND)
 
-        nb.AddPage(self.plainPanel, _("Visulisation Plugin"))
+        nb.AddPage(self.plainPanel, _("Visulisation"))
 
         #END OF OUR VIS PANEL
 
@@ -704,7 +622,6 @@ class printWindow(wx.Frame):
                 #self.jlt_layerCountDict[str(jlt_currentLayerId) + 'cumul'] = self.jlt_layerCountDict[str(jlt_currentLayerId - 1) + 'cumul']
 
                 #print jlt_currentLayerId
-                
             if line.startswith(';TYPE:'):
                 lineType = line[6:].strip()
             if ';' in line:
@@ -731,6 +648,7 @@ class printWindow(wx.Frame):
         wx.CallAfter(self.progress.SetRange, len(gcodeList))
         wx.CallAfter(self.UpdateButtonStates)
         wx.CallAfter(self.UpdateProgress)
+        self.glVisPanel.setGcode(self._gcodeOriginal)
         return True
 
     def sendLine(self, lineNr):
@@ -797,12 +715,24 @@ class printWindow(wx.Frame):
             wx.CallAfter(self.camPreview.Refresh)
 
 
-class visPanel(openglGui.glGuiPanel):#SceneView):
+class visPanel(SceneView):
     def __init__(self, parent):
         super(visPanel, self).__init__(parent)
 
+        self.viewMode = 'gcode'
+        self.printButton.setHidden(True)
+        self.openFileButton.setHidden(True)
+        self.youMagineButton.setHidden(True)
+        self.viewSelection.setHidden(True)
+
         #self._drawMachine()
         #self.SetSize((800, 800))
+
+    def setGcode(self, gcodeList):
+        print "setGcode Called"
+        self._gcode = gcodeInterpreter.gcode()
+        self._gcode.loadList(gcodeList)
+        self.viewMode = 'gcode'
 
 
 class temperatureGraph(wx.Panel):
