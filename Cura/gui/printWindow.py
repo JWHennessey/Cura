@@ -510,7 +510,7 @@ class printWindow(wx.Frame):
         self.UpdateButtonStates()
 
     def OnCancel(self, e):
-        print "PrintWindo: Cancel Pressed"
+        #print "PrintWindo: Cancel Pressed"
         self.pauseButton.SetLabel('Pause')
         self.machineCom.cancelPrint()
         self.machineCom.sendCommand("M84")
@@ -551,13 +551,15 @@ class printWindow(wx.Frame):
     def OnOffsetXChange(self, e):
         if self.machineCom is None:
             return
-        self.machineCom.setCanEditLayerOffsetX(float(self.offsetXSelect.GetValue()) / 10)
+        g = self.machineCom.setCanEditLayerOffsetX(float(self.offsetXSelect.GetValue()) / 10)
+        self.glVisPanel.setGcode(g)
 
     def OnOffsetYChange(self, e):
         if self.machineCom is None:
             return
-        self.machineCom.setCanEditLayerOffsetY(float(self.offsetYSelect.GetValue()) / 10)
-    
+        g = self.machineCom.setCanEditLayerOffsetY(float(self.offsetYSelect.GetValue()) / 10)
+        self.glVisPanel.setGcode(g)
+
     def AddTermLog(self, line):
         if len(self.termLog.GetValue()) > 10000:
             self.termLog.SetValue(self.termLog.GetValue()[-10000:])
@@ -669,8 +671,8 @@ class printWindow(wx.Frame):
         return True
 
     def mcLog(self, message):
-        print "PrintWindo:  " + message
-        #pass
+        #print "PrintWindo:  " + message
+        pass
 
     def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
         self.temperatureGraph.addPoint(temp, targetTemp, bedTemp, bedTargetTemp)
@@ -724,16 +726,21 @@ class visPanel(SceneView):
         self.openFileButton.setHidden(True)
         self.youMagineButton.setHidden(True)
         self.viewSelection.setHidden(True)
-
+        self.layerSelect.setHidden(False)
         #self._drawMachine()
         #self.SetSize((800, 800))
 
     def setGcode(self, gcodeList):
+        print len(gcodeList)
         print "setGcode Called"
+        print gcodeList
+        print "\n\n\n\n\n\n***************\n"
+        self._gcode = None
         self._gcode = gcodeInterpreter.gcode()
         self._gcode.loadList(gcodeList)
         self.viewMode = 'gcode'
-
+        self.layerSelect.setRange(1, len(self._gcode.layerList) - 1)
+        self.QueueRefresh()
 
 class temperatureGraph(wx.Panel):
     def __init__(self, parent):

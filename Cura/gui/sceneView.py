@@ -1129,7 +1129,7 @@ void main(void)
         self._drawMachine()
 
         if self._usbPrintMonitor.getState() == 'PRINTING' and self._usbPrintMonitor.getID() == self._slicer.getID():
-            self._gcode.loadList(self._usbPrintMonitor.getGcode())
+            #self._gcode.loadList(self._usbPrintMonitor.getGcode())
             #print "GCODE LAYER LIST START"
             #print self._gcode.layerList
             #print "GCODE LAYER LIST END"

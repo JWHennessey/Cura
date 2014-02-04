@@ -202,7 +202,7 @@ class MachineCom(object):
         self._jlt_offset_x = 0
         self._jlt_offset_y = 0
         self._gcodeOriginal = None
-
+        self._gcodeForRendering = []
 
         self.thread = threading.Thread(target=self._monitor)
         self.thread.daemon = True
@@ -306,13 +306,13 @@ class MachineCom(object):
         self._jlt_offset_x = offset
         self._log("Offset X Changes: " + str(self._jlt_offset_x))
         self.transformNextLayer()
-        return self._gcodeList
+        return self._gcodeForRendering
 
     def setCanEditLayerOffsetY(self, offset):
         self._jlt_offset_y = offset
         self._log("Offset Y Changes: " + str(self._jlt_offset_y ))
         self.transformNextLayer()
-        return self._gcodeList
+        return self._gcodeForRendering
 
     def getLog(self):
         ret = []
@@ -666,9 +666,9 @@ class MachineCom(object):
     def transformNextLayer(self):
         # Transforms the next layer waiting to be printed
 
-        if(self._jlt_currentLayerId < len(self._jlt_layerCountDict)-6):
-            #self._jlt_offset += 0.05
-            pass
+        #if(self._jlt_currentLayerId < len(self._jlt_layerCountDict)-6):
+            ##self._jlt_offset += 0.05
+            #pass
 
         nextLayer = self._jlt_currentLayerId + 1
         # Don't modify first five layers
@@ -679,25 +679,23 @@ class MachineCom(object):
         #end   = start + self._jlt_layerCountDict[nextLayer]
         end = len(self._gcodeList)-9
         
-        #print 'NEWGCODE:' + str(self._gcodePos)
-
         for i in range(start, end):
-            self._gcodeList[i] = self.transformLine(self._gcodeOriginal[i])
-            self._log("Updated gcodeList " + str(i) + " " + str(self._gcodeList[i]))
+            if type(self._gcodeOriginal[i]) is tuple:
+                self._gcodeList[i] = (self.transformLine(self._gcodeOriginal[i]), self._gcodeList[i][1])
+            else:
+                self._gcodeList[i] = self.transformLine(self._gcodeOriginal[i])
 
-        #layerIndex = 1
-        #for i in range(len(self._gcodeList)):
-            #if(i == sum([self._jlt_layerCountDict[x] for x in range(layerIndex)])):
-                #print 'GCODE:;LAYER:' + str(layerIndex)
-                #layerIndex += 1
-            #if type(self._gcodeList[i]) is tuple:
-                #print 'GCODE:;TYPE:'+ self._gcodeList[i][1]
-                #print 'GCODE:' + self._gcodeList[i][0]
-            #else:
-                #print 'GCODE:' + self._gcodeList[i]
-
-
-
+        self._gcodeForRendering = []
+        layerIndex = 1
+        for i in range(len(self._gcodeList)):
+            if(i == sum([self._jlt_layerCountDict[x] for x in range(layerIndex)])):
+                self._gcodeForRendering.append(';LAYER:' + str(layerIndex))
+                layerIndex += 1
+            if type(self._gcodeList[i]) is tuple:
+                self._gcodeForRendering.append(';TYPE:'+ self._gcodeList[i][1])
+                self._gcodeForRendering.append(self._gcodeList[i][0])
+            else:
+                self._gcodeForRendering.append(self._gcodeList[i])
 
     def transformLine(self, gcode_line):
         # Proof of concept: random transform first
@@ -754,9 +752,6 @@ class MachineCom(object):
         self._log("MachineCom: Layers 0 in list")
         self._jlt_currentLayerId = 1
 
-        #print gcodeList
-        #print "END GCODE LIST"
-        #sys.exit()
     
     def cancelPrint(self):
         if self.isOperational():

@@ -85,8 +85,8 @@ class printProcessMonitor():
                     self._gcode.append(line[6:])
                 elif line.startswith('GCODE-TUPLE:'):
                     self._gcode.append(tuple(line[12:].split(':')))
-                else:
-                    print '>' + line.rstrip()
+                #else:
+                    #print '>' + line.rstrip()
             except:
                 print sys.exc_info()
             line = p.stdout.readline()
