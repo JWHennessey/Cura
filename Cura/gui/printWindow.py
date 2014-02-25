@@ -302,12 +302,14 @@ class printWindow(wx.Frame):
 
         self.plainPanel.SetSizer(sizer)
 
-
         sizer.Add(self.glVisPanel, 1, flag=wx.EXPAND)
 
         nb.AddPage(self.plainPanel, _("Visulisation"))
 
         #END OF OUR VIS PANEL
+
+
+
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.connectButton.Bind(wx.EVT_BUTTON, self.OnConnect)
@@ -552,6 +554,7 @@ class printWindow(wx.Frame):
         if self.machineCom is None:
             return
         g = self.machineCom.setCanEditLayerOffsetX(float(self.offsetXSelect.GetValue()) / 10)
+        print "Offset X Change"
         self.glVisPanel.setGcode(g)
 
     def OnOffsetYChange(self, e):
@@ -731,16 +734,18 @@ class visPanel(SceneView):
         #self.SetSize((800, 800))
 
     def setGcode(self, gcodeList):
-        print len(gcodeList)
-        print "setGcode Called"
-        print gcodeList
-        print "\n\n\n\n\n\n***************\n"
+        #print len(gcodeList)
+        #print "setGcode Called"
+        #print gcodeList
+        #print "\n\n\n\n\n\n***************\n"
+        self._gcodeVBOs = []
         self._gcode = None
         self._gcode = gcodeInterpreter.gcode()
         self._gcode.loadList(gcodeList)
         self.viewMode = 'gcode'
         self.layerSelect.setRange(1, len(self._gcode.layerList) - 1)
         self.QueueRefresh()
+        self.sceneUpdated()
 
 class temperatureGraph(wx.Panel):
     def __init__(self, parent):
