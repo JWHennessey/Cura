@@ -17,7 +17,7 @@ import sys
 import power
 import datetime
 import shutil
-
+import zmq
 
 
 from wx.lib import buttons
@@ -142,17 +142,26 @@ class printWindow(wx.Frame):
         self.connectButton = wx.Button(self.panel, -1, _("Connect"))
         #self.loadButton = wx.Button(self.panel, -1, 'Load')
         self.printButton = wx.Button(self.panel, -1, _("Print"))
+
+        self.editButton = wx.Button(self.panel, -1, _("Edit Model"))
+
         self.pauseButton = wx.Button(self.panel, -1, _("Pause"))
         self.cancelButton = wx.Button(self.panel, -1, _("Cancel print"))
         self.machineLogButton = wx.Button(self.panel, -1, _("Error log"))
         self.progress = wx.Gauge(self.panel, -1)
 
+        
+
         self.sizer.Add(self.connectButton, pos=(1, 1), flag=wx.EXPAND)
         #self.sizer.Add(self.loadButton, pos=(1,1), flag=wx.EXPAND)
         self.sizer.Add(self.printButton, pos=(2, 1), flag=wx.EXPAND)
         self.sizer.Add(self.pauseButton, pos=(3, 1), flag=wx.EXPAND)
-        self.sizer.Add(self.cancelButton, pos=(4, 1), flag=wx.EXPAND)
-        self.sizer.Add(self.machineLogButton, pos=(5, 1), flag=wx.EXPAND)
+
+        self.sizer.Add(self.editButton, pos=(4, 1), flag=wx.EXPAND)
+
+
+        self.sizer.Add(self.cancelButton, pos=(5, 1), flag=wx.EXPAND)
+        self.sizer.Add(self.machineLogButton, pos=(6, 1), flag=wx.EXPAND)
         self.sizer.Add(self.progress, pos=(15, 0), span=(1, 10), flag=wx.EXPAND)
 
         nb = wx.Notebook(self.panel)
@@ -318,6 +327,8 @@ class printWindow(wx.Frame):
         self.pauseButton.Bind(wx.EVT_BUTTON, self.OnPause)
         self.cancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
         self.machineLogButton.Bind(wx.EVT_BUTTON, self.OnMachineLog)
+        self.editButton.Bind(wx.EVT_BUTTON, self.loadEditInterface)
+
 
         self.Bind(wx.EVT_BUTTON, lambda e: (self.temperatureSelect.SetValue(int(profile.getProfileSettingFloat('print_temperature'))), self.machineCom.sendCommand("M104 S%d" % (int(profile.getProfileSettingFloat('print_temperature'))))), self.temperatureHeatUp)
         self.Bind(wx.EVT_SPINCTRL, self.OnTempChange, self.temperatureSelect)
@@ -719,6 +730,23 @@ class printWindow(wx.Frame):
             wx.CallAfter(self.cam.takeNewImage)
             wx.CallAfter(self.camPreview.Refresh)
 
+    def loadEditInterface(self, e):
+        print "loadEditInterface"
+        fileLocation = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../GeometryProcessing/OpenMesh/Build/Build/bin', 'GeometryCoursework'))
+        args = (fileLocation)
+        popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+        #popen.wait()
+        #context = zmq.Context()
+        #print("Connecting to hello world server...")
+        #socket = context.socket(zmq.REQ)
+        #socket.connect("tcp://localhost:5555")
+        ##for request in range(10):
+        #print("Sending request" )
+        #socket.send(b"Hello")
+
+        ##  Get the reply.
+        #message = socket.recv()
+        #print("Received reply %s [ %s ]" % (1, message))
 
 class visPanel(SceneView):
     def __init__(self, parent):
