@@ -221,6 +221,7 @@ class SceneView(openglGui.glGuiPanel):
         meshLoader.saveMeshes(filename, self._scene.objects())
 
     def OnPrintButton(self, button):
+        #self.showPrintWindow()
         if button == 1:
             if machineCom.machineIsConnected():
                 self.showPrintWindow()

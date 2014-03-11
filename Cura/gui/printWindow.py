@@ -685,8 +685,8 @@ class printWindow(wx.Frame):
         return True
 
     def mcLog(self, message):
-        #print "PrintWindo:  " + message
-        pass
+        print "PrintWindo:  " + message
+        #pass
 
     def mcTempUpdate(self, temp, bedTemp, targetTemp, bedTargetTemp):
         self.temperatureGraph.addPoint(temp, targetTemp, bedTemp, bedTargetTemp)
@@ -730,24 +730,31 @@ class printWindow(wx.Frame):
             wx.CallAfter(self.cam.takeNewImage)
             wx.CallAfter(self.camPreview.Refresh)
 
+
+    def commsThread(self):
+        context = zmq.Context()
+        self.termLog.AppendText("Connecting to hello world server ...\n")
+        socket = context.socket(zmq.REQ)
+        socket.connect("tcp://localhost:5555")
+        for request in range(10):
+            self.termLog.AppendText("Sending request %s ... \n" % request)
+            socket.send(b"Hello")
+            message = socket.recv()
+            self.termLog.AppendText("Received reply %s [ %s ] \n" % (request, message))
+
     def loadEditInterface(self, e):
         print "loadEditInterface"
-        fileLocation = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../GeometryProcessing/OpenMesh/Build/Build/bin', 'GeometryCoursework'))
+        self.termLog.AppendText('> Hello From Python')
+        fileLocation = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../GeometryProcessing/OpenMesh/Build/Build/bin', 'CuraEditInterface'))
         args = (fileLocation)
-        popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+        process = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        thread = threading.Thread(target = self.commsThread)
+        thread.start()
+        #thread.join()
         #popen.wait()
-        #context = zmq.Context()
-        #print("Connecting to hello world server...")
-        #socket = context.socket(zmq.REQ)
-        #socket.connect("tcp://localhost:5555")
-        ##for request in range(10):
-        #print("Sending request" )
-        #socket.send(b"Hello")
+        # Poll process for new output until finished
 
-        ##  Get the reply.
-        #message = socket.recv()
-        #print("Received reply %s [ %s ]" % (1, message))
-
+        
 class visPanel(SceneView):
     def __init__(self, parent):
         super(visPanel, self).__init__(parent)
