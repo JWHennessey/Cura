@@ -43,6 +43,7 @@ class printProcessMonitor():
         self._id = -1
         self._gcode = []
         self._gcodePos = 0
+        self.model = None
 
     def loadFile(self, filename, id):
         if self.handle is None:

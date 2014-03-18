@@ -9,6 +9,7 @@ import traceback
 import threading
 import math
 import platform
+import zmq
 
 import OpenGL
 OpenGL.ERROR_CHECKING = False
@@ -221,32 +222,32 @@ class SceneView(openglGui.glGuiPanel):
         meshLoader.saveMeshes(filename, self._scene.objects())
 
     def OnPrintButton(self, button):
-        #self.showPrintWindow()
-        if button == 1:
-            if machineCom.machineIsConnected():
-                self.showPrintWindow()
-            elif len(removableStorage.getPossibleSDcardDrives()) > 0:
-                drives = removableStorage.getPossibleSDcardDrives()
-                if len(drives) > 1:
-                    dlg = wx.SingleChoiceDialog(self, "Select SD drive", "Multiple removable drives have been found,\nplease select your SD card drive", map(lambda n: n[0], drives))
-                    if dlg.ShowModal() != wx.ID_OK:
-                        dlg.Destroy()
-                        return
-                    drive = drives[dlg.GetSelection()]
-                    dlg.Destroy()
-                else:
-                    drive = drives[0]
-                filename = self._scene._objectList[0].getName() + '.gcode'
-                threading.Thread(target=self._copyFile,args=(self._gcodeFilename, drive[1] + filename, drive[1])).start()
-            else:
-                self.showSaveGCode()
-        if button == 3:
-            menu = wx.Menu()
-            self.Bind(wx.EVT_MENU, lambda e: self.showPrintWindow(), menu.Append(-1, _("Print with USB")))
-            self.Bind(wx.EVT_MENU, lambda e: self.showSaveGCode(), menu.Append(-1, _("Save GCode...")))
-            self.Bind(wx.EVT_MENU, lambda e: self._showSliceLog(), menu.Append(-1, _("Slice engine log...")))
-            self.PopupMenu(menu)
-            menu.Destroy()
+        self.showPrintWindow()
+        #if button == 1:
+            #if machineCom.machineIsConnected():
+                #self.showPrintWindow()
+            #elif len(removableStorage.getPossibleSDcardDrives()) > 0:
+                #drives = removableStorage.getPossibleSDcardDrives()
+                #if len(drives) > 1:
+                    #dlg = wx.SingleChoiceDialog(self, "Select SD drive", "Multiple removable drives have been found,\nplease select your SD card drive", map(lambda n: n[0], drives))
+                    #if dlg.ShowModal() != wx.ID_OK:
+                        #dlg.Destroy()
+                        #return
+                    #drive = drives[dlg.GetSelection()]
+                    #dlg.Destroy()
+                #else:
+                    #drive = drives[0]
+                #filename = self._scene._objectList[0].getName() + '.gcode'
+                #threading.Thread(target=self._copyFile,args=(self._gcodeFilename, drive[1] + filename, drive[1])).start()
+            #else:
+                #self.showSaveGCode()
+        #if button == 3:
+            #menu = wx.Menu()
+            #self.Bind(wx.EVT_MENU, lambda e: self.showPrintWindow(), menu.Append(-1, _("Print with USB")))
+            #self.Bind(wx.EVT_MENU, lambda e: self.showSaveGCode(), menu.Append(-1, _("Save GCode...")))
+            #self.Bind(wx.EVT_MENU, lambda e: self._showSliceLog(), menu.Append(-1, _("Slice engine log...")))
+            #self.PopupMenu(menu)
+            #menu.Destroy()
 
     def showPrintWindow(self):
         if self._gcodeFilename is None:
@@ -563,6 +564,7 @@ class SceneView(openglGui.glGuiPanel):
                     imageToMesh.convertImageDialog(self, filename).Show()
                     objList = []
                 else:
+                    self.sendMeshToCuraEditInterface(filename)
                     objList = meshLoader.loadMeshes(filename)
             except:
                 traceback.print_exc()
@@ -1525,6 +1527,14 @@ void main(void)
         if self._selectedObj is None:
             return numpy.matrix([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         return self._selectedObj.getMatrix()
+
+    #Send model to the CuraEditInterface
+    def sendMeshToCuraEditInterface(self, filename):
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.connect("tcp://localhost:5555")
+        socket.send_string("0"+filename)
+
 
 class shaderEditor(wx.Dialog):
     def __init__(self, parent, callback, v, f):

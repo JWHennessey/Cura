@@ -730,24 +730,26 @@ class printWindow(wx.Frame):
             wx.CallAfter(self.cam.takeNewImage)
             wx.CallAfter(self.camPreview.Refresh)
 
-
+    #Needs to be a ZMQ server than well polled returns the infomation of printed
+    # and committed lines
     def commsThread(self):
-        context = zmq.Context()
-        self.termLog.AppendText("Connecting to hello world server ...\n")
-        socket = context.socket(zmq.REQ)
-        socket.connect("tcp://localhost:5555")
-        for request in range(10):
-            self.termLog.AppendText("Sending request %s ... \n" % request)
-            socket.send(b"Hello")
-            message = socket.recv()
-            self.termLog.AppendText("Received reply %s [ %s ] \n" % (request, message))
+        print "Set Up Server"
+        #context = zmq.Context()
+        #self.termLog.AppendText("Connecting to hello world server ...\n")
+        #socket = context.socket(zmq.REQ)
+        #socket.connect("tcp://localhost:5555")
+        #for request in range(10):
+            #self.termLog.AppendText("Sending request %s ... \n" % request)
+            #socket.send(b"Hello")
+            #message = socket.recv()
+            #self.termLog.AppendText("Received reply %s [ %s ] \n" % (request, message))
 
     def loadEditInterface(self, e):
         print "loadEditInterface"
-        self.termLog.AppendText('> Hello From Python')
-        fileLocation = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../GeometryProcessing/OpenMesh/Build/Build/bin', 'CuraEditInterface'))
-        args = (fileLocation)
-        process = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        #self.termLog.AppendText('> Hello From Python')
+        #fileLocation = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../GeometryProcessing/OpenMesh/Build/Build/bin', 'CuraEditInterface'))
+        #args = (fileLocation)
+        #process = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         thread = threading.Thread(target = self.commsThread)
         thread.start()
         #thread.join()
