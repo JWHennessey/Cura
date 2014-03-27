@@ -556,6 +556,7 @@ class SceneView(openglGui.glGuiPanel):
             self._queueRefresh()
         return False
 
+    #When file it loaded it will send it to the cura edit interface
     def loadScene(self, fileList):
         for filename in fileList:
             try:
